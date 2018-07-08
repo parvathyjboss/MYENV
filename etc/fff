@@ -1,0 +1,5 @@
+echo hi $1
+echo hello $2
+echo welcome $3
+echo  name is $0 and I have been given $# command line arguments which are $*
+echo the name of this script is $0

@@ -1,0 +1,2 @@
+httpd::apache_portno: '90'
+httpd::apache_serverip: 'localhost'

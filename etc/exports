@@ -1,0 +1,2 @@
+/public *(ro,sync)
+/opt *(ro,sync)

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cruise xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="cruise-config.xsd" schemaVersion="108">
+  <server artifactsdir="artifacts" agentAutoRegisterKey="c30a3f9e-7155-4b47-b4d4-3462bc35ba2f" webhookSecret="5f6ca857-5a71-437b-a9cc-6fc9451973c9" commandRepositoryLocation="default" serverId="e0f26ff9-2870-4c4b-97e6-141da1264b36" tokenGenerationKey="a98257bc-51ce-45be-9371-be26e9e7c304" />
+  <pipelines group="LINUXADMIN">
+    <pipeline name="Linux-scripts">
+      <materials>
+        <git url="https://github.com/parvathyjboss/Parvathy-GOCD.git" branch="GOCD-develop" dest="Parvathy-GOCD" autoUpdate="false" />
+      </materials>
+      <stage name="Stage-1">
+        <approval type="manual" />
+        <jobs>
+          <job name="Copying_readme_file">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>cd Parvathy-GOCD;mkdir -p /tmp/test-scripts;cp * /tmp/test-scripts</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="PUPPET_SETUP">
+      <materials>
+        <git url="https://github.com/parvathyjboss/prodenv.git" dest="masterless" autoUpdate="false" />
+      </materials>
+      <stage name="Puppet-Install">
+        <approval type="manual" />
+        <jobs>
+          <job name="Puppet-Install-1">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>ssh gocdusr@puppet sudo yum install -y net-tools</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="ENVIRON-PIPELINE">
+      <materials>
+        <git url="https://github.com/parvathyjboss/Parvathy-GOCD.git" branch="GOCD-develop" dest="masterless" autoUpdate="false" />
+      </materials>
+      <stage name="Stage-1">
+        <jobs>
+          <job name="job-1">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>ssh gocdusr@$hostname touch envtest.txt;</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="PUPPET_MODULE_INSTALL">
+      <materials>
+        <git url="https://github.com/parvathy-subbiah/production.git" dest="production" autoUpdate="false" />
+      </materials>
+      <stage name="Stage-1">
+        <approval type="manual" />
+        <jobs>
+          <job name="Puppet_installation">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>ssh $user@$hostname sudo yum install puppet -y</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="copy_to_desired_loc_in_dest_server">
+            <environmentvariables>
+              <variable name="hostname">
+                <value>puppet</value>
+              </variable>
+            </environmentvariables>
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>scp  -r production/* $user@$hostname:/etc/puppetlabs/code/environment/production</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="facter_and_hiera_values_export">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>ssh $user@$hostname "export facter_listen_port="$port";export facter_puppet_role="$puppet_role";export facter_role="role::$puppet_role""</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+          <job name="Puppet_apply">
+            <tasks>
+              <exec command="/bin/bash">
+                <arg>-c</arg>
+                <arg>ssh $user@$hostname "export facter_listen_port="$port";export facter_puppet_role="$puppet_role";export facter_role="role::$puppet_role";puppet apply --hiera_config="/etc/puppetlabs/code/environment/production/hiera.yaml" --environment="production"  --modulepath="/etc/puppetlabs/code/environment/production/modules" /etc/puppetlabs/code/environment/production/manifests/site.pp"</arg>
+                <runif status="passed" />
+              </exec>
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+  </pipelines>
+  <environments>
+    <environment name="DEV">
+      <environmentvariables>
+        <variable name="hostname">
+          <value>puppet</value>
+        </variable>
+        <variable name="puppet_role">
+          <value>nginxserver</value>
+        </variable>
+        <variable name="port">
+          <value>80</value>
+        </variable>
+        <variable name="user">
+          <value>root</value>
+        </variable>
+      </environmentvariables>
+      <agents>
+        <physical uuid="00fa51e4-961f-4cb7-9840-8f8d24c52028" />
+      </agents>
+      <pipelines>
+        <pipeline name="ENVIRON-PIPELINE" />
+        <pipeline name="Linux-scripts" />
+        <pipeline name="PUPPET_MODULE_INSTALL" />
+        <pipeline name="PUPPET_SETUP" />
+      </pipelines>
+    </environment>
+  </environments>
+  <agents>
+    <agent hostname="puppet" ipaddress="10.0.2.15" uuid="00fa51e4-961f-4cb7-9840-8f8d24c52028">
+      <resources>
+        <resource>Key-based_auth</resource>
+      </resources>
+    </agent>
+  </agents>
+</cruise>

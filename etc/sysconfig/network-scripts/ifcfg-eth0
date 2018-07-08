@@ -1,0 +1,7 @@
+DEVICE="eth0"
+BOOTPROTO="dhcp"
+ONBOOT="yes"
+TYPE="Ethernet"
+PERSISTENT_DHCLIENT="yes"
+IPADDR="192.168.43.15"
+DNS="8.8.8.8"
